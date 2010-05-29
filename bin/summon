@@ -135,6 +135,12 @@ def get_file_data(fname):
             with open(os.path.join('nexus',fname),'r') as fin:
                 data = fin.read()
                 return data
+
+    if os.path.isdir('.nexus'):
+        if os.path.isfile( os.path.join('.nexus',fname)):
+            with open(os.path.join('.nexus',fname),'r') as fin:
+                data = fin.read()
+                return data
     
     # Search home
     home_nexus_fname = os.path.join(os.getenv('HOME'),'.nexus',fname)
@@ -144,17 +150,19 @@ def get_file_data(fname):
             return data
 
     # Search Online
-    servername = os.getenv('SUMMONSERVER')
-    url = 'http://%(servername)s/nexus/%(fname)s'%locals()
-    try:
-        result = urllib2.urlopen(url)
-        data = result.read()
-        return data
-    except:
-        pass
-
-    raise Exception(' >> Reason, could not find file: '+fname)
-    return None # will never be called
+    servername_list = os.getenv('SUMMONSERVER')
+    if servername_list:
+        for servername in servername_list.split(':'):
+            url = 'http://%(servername)s/nexus/%(fname)s'%locals()
+            try:
+                result = urllib2.urlopen(url)
+                data = result.read()
+                return data
+            except:
+                pass
+        
+        raise Exception(' >> Reason, could not find file: '+fname)
+        return None # will never be called
 
 def execute_command(command):
     assert(command.has_key('get_name'))
@@ -176,6 +184,8 @@ def execute_command(command):
         fout.write(data)
 
 def main(argv):
+    
+
     user_input = ' '.join(argv[1:])
     parser = SummonParser()
     commands = parser.parse(user_input)
