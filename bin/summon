@@ -1,0 +1,126 @@
+#!/usr/bin/env python
+
+import ply.lex as lex
+import ply.yacc as yacc
+from pprint import pprint
+import sys
+
+
+class Command:
+    def __init__(self):
+        self.targets = []
+        self.values = []
+        self.destination = None
+
+    # Debug
+    def __repr__(self):
+        return str(self.__dict__)
+
+    def execute(self):
+        pass
+    
+#result = urllib2.urlopen('http://www.ironalbatross.net/nexus/Test')
+#result.read()
+
+
+
+class SummonLexer:
+    reserved_words = '''
+    AS
+    WHERE
+    AND
+    '''.split()
+    tokens = reserved_words + ['STRING']
+    
+    t_ignore    = '\t\n '
+    
+    def t_STRING(self,t):
+        r'[^\n\t ]+'
+        if t.value.upper() in [x.upper() for x in self.reserved_words]:
+            t.type = t.value.upper()
+        return t
+
+    def t_error(self,t):
+        print "Lexer Error"
+        print t
+        print dir(t.value[0])
+        
+    def __init__(self):
+        self.lexer = lex.lex(module=self)
+
+    def tokenize(self,data):
+        'Debug method!'
+        self.lexer.input(data)
+        while True:
+            tok = self.lexer.token()
+            if tok:
+                yield tok
+            else:
+                break
+
+class SummonParser:
+    def __init__(self):
+        self.lexer = SummonLexer()
+        self.tokens = self.lexer.tokens
+        self.parser = yacc.yacc(module=self,write_tables=0,debug=False)
+
+    def parse(self,data):
+        return self.parser.parse(data,self.lexer.lexer,0,0,None)
+
+    def p_error(self,p):
+        print 'Error!'
+        print p
+        print
+
+    def p_command_list_0(self,p):
+        '''command_list : command'''
+        p[0] = [p[1]]
+
+    def p_command_list_1(self,p):
+        '''command_list : command_list AND command'''
+        p[0] = p[1] + [p[3]]
+
+
+    def p_command_0(self,p):
+        '''command : string_list'''
+        command = Command()
+        command.targets = p[1]
+        p[0] = command
+
+    def p_command_1(self,p):
+        '''command : string_list AS string_list'''
+        if len(p[1]) != len(p[3]):
+            raise Exception('''
+Error, unbalanced AS statement. You should have as many requested files as you have destinations.
+            '''.lstrip())
+        
+        command = Command()
+        command.targets = p[1]
+        command.destination = p[3]
+        p[0] = command
+
+    def p_command_2(self,p):
+        '''command : command WHERE string_list'''
+        command = p[1]
+        command.values = p[3]
+        p[0] = command
+
+    def p_string_list_0(self,p):
+        '''string_list : STRING'''
+        p[0] = [p[1]]
+
+    def p_string_list_1(self,p):
+        '''string_list : string_list STRING'''
+        p[0] = p[1] + [p[2]]
+
+
+def main(argv):
+    input = ' '.join(argv[1:])
+    parser = SummonParser()
+    commands = parser.parse(input)
+    pprint(commands)
+    for command in commands:
+        command.execute()
+
+if __name__ == '__main__':
+    main(sys.argv)
