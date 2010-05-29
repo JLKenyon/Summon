@@ -4,25 +4,7 @@ import ply.lex as lex
 import ply.yacc as yacc
 from pprint import pprint
 import sys
-
-
-class Command:
-    def __init__(self):
-        self.targets = []
-        self.values = []
-        self.destination = None
-
-    # Debug
-    def __repr__(self):
-        return str(self.__dict__)
-
-    def execute(self):
-        pass
-    
-#result = urllib2.urlopen('http://www.ironalbatross.net/nexus/Test')
-#result.read()
-
-
+import os
 
 class SummonLexer:
     reserved_words = '''
@@ -65,7 +47,10 @@ class SummonParser:
         self.parser = yacc.yacc(module=self,write_tables=0,debug=False)
 
     def parse(self,data):
-        return self.parser.parse(data,self.lexer.lexer,0,0,None)
+        if data:
+            return self.parser.parse(data,self.lexer.lexer,0,0,None)
+        else:
+            return []
 
     def p_error(self,p):
         print 'Error!'
@@ -80,12 +65,9 @@ class SummonParser:
         '''command_list : command_list AND command'''
         p[0] = p[1] + [p[3]]
 
-
     def p_command_0(self,p):
         '''command : string_list'''
-        command = Command()
-        command.targets = p[1]
-        p[0] = command
+        p[0] = dict(targets=p[1])
 
     def p_command_1(self,p):
         '''command : string_list AS string_list'''
@@ -93,16 +75,13 @@ class SummonParser:
             raise Exception('''
 Error, unbalanced AS statement. You should have as many requested files as you have destinations.
             '''.lstrip())
+        p[0] = dict(targets=p[1],destination=p[3])
         
-        command = Command()
-        command.targets = p[1]
-        command.destination = p[3]
-        p[0] = command
 
     def p_command_2(self,p):
         '''command : command WHERE string_list'''
         command = p[1]
-        command.values = p[3]
+        command['values'] = p[3]
         p[0] = command
 
     def p_string_list_0(self,p):
@@ -114,13 +93,103 @@ Error, unbalanced AS statement. You should have as many requested files as you h
         p[0] = p[1] + [p[2]]
 
 
+def reduce_command(commands):
+    assert(commands.has_key('targets'))
+
+    if commands.has_key('values'):
+        targets = [x+'.tmpl' for x in commands['targets']]
+    else:
+        targets = commands['targets']
+
+    if commands.has_key('destination'):
+        destinations = commands['destination']
+    else:
+        destinations = commands['targets']
+
+    if commands.has_key('values'):
+        values = dict()
+        for line in commands['values']:
+            left,right = tuple(line.split('='))
+            values[left] = right
+    else:
+        values = {}
+
+    ret = []
+    for target,destination,raw in zip(targets,destinations,commands['targets']):
+        if destination == '_':
+            destination = raw
+        ret.append({'get_name':target,'put_name':destination,'values':values})
+    return ret
+
+def flatten(l):
+    ret = []
+    for sl in l:
+        for v in sl:
+            ret.append(v)
+    return ret
+
+def get_file_data(fname):
+    # Search locally
+    if os.path.isdir('nexus'):
+        if os.path.isfile( os.path.join('nexus',fname)):
+            with open(os.path.join('nexus',fname),'r') as fin:
+                data = fin.read()
+                return data
+    
+    # Search home
+    home_nexus_fname = os.path.join(os.getenv('HOME'),'.nexus',fname)
+    if os.path.isfile(home_nexus_fname):
+        with open(home_nexus_fname,'r') as fin:
+            data = fin.read()
+            return data
+
+    # Search Online
+    servername = os.getenv('SUMMONSERVER')
+    url = 'http://%(servername)s/nexus/%(fname)s'%locals()
+    try:
+        result = urllib2.urlopen(url)
+        data = result.read()
+        return data
+    except:
+        pass
+
+    raise Exception(' >> Reason, could not find file: '+fname)
+    return None # will never be called
+
+def execute_command(command):
+    assert(command.has_key('get_name'))
+    assert(command.has_key('put_name'))
+    assert(command.has_key('values'))
+    get_name = command['get_name']
+    put_name = command['put_name']
+    values   = command['values']
+
+    # Get
+    data = get_file_data(get_name)
+
+    # Optionally apply
+    if values:
+        data = data % values
+
+    # Put
+    with open(put_name,'w') as fout:
+        fout.write(data)
+
 def main(argv):
-    input = ' '.join(argv[1:])
+    user_input = ' '.join(argv[1:])
     parser = SummonParser()
-    commands = parser.parse(input)
-    pprint(commands)
-    for command in commands:
-        command.execute()
+    commands = parser.parse(user_input)
+    simple_commands = flatten([reduce_command(x) for x in commands])
+    for c in simple_commands:
+        try:
+            execute_command(c)
+        except Exception, e:
+            print " !! Error, could not summon file:",c['get_name']
+            print e
+            print "Continuing..."
+            print
+
+    #pprint(simple_commands)
 
 if __name__ == '__main__':
     main(sys.argv)
