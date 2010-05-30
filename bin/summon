@@ -184,7 +184,17 @@ def execute_command(command):
         fout.write(data)
 
 def main(argv):
-    
+    if not os.path.isdir(os.path.join(os.getenv('HOME'),'.nexus')):
+        print "No $HOME/.nexus directory found. Creating..."
+        try:
+            nexus_dir = os.path.join(os.getenv('HOME'),'.nexus')
+            os.makedirs(nexus_dir)
+            print '''
+Created directory "%(nexus_dir)s".  You should place any files you wish to
+summon in this directory.''' % locals()
+        except:
+            print "Failed to create Nexus"
+
 
     user_input = ' '.join(argv[1:])
     parser = SummonParser()
