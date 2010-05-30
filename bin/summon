@@ -5,6 +5,7 @@ import ply.yacc as yacc
 from pprint import pprint
 import sys
 import os
+import urllib2
 
 class SummonLexer:
     reserved_words = '''
@@ -158,11 +159,11 @@ def get_file_data(fname):
                 result = urllib2.urlopen(url)
                 data = result.read()
                 return data
-            except:
+            except Exception, e:
+                print e
                 pass
         
-        raise Exception(' >> Reason, could not find file: '+fname)
-        return None # will never be called
+    raise Exception(' >> Reason, could not find file: '+fname)
 
 def execute_command(command):
     assert(command.has_key('get_name'))
