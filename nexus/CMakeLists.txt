@@ -4,7 +4,6 @@ PROJECT(MyProject)
 
 SET(MYLIB "MyProject")
 
-# This is a special CMake variable
 SET(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/../bin/)
 SET(LIBRARY_OUTPUT_PATH    ${CMAKE_SOURCE_DIR}/../lib/)
 SET(SRC_DIR ${CMAKE_SOURCE_DIR}/../src/)
