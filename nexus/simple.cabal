@@ -1,0 +1,25 @@
+Name:      <Project>
+Version:   0.1
+License:   BSD3
+
+Synopsis: <A Haskell library>
+Description: <A Haskell Library>
+Author: <Your Name Here>
+Maintainer: <Your Email Here>
+Cabal-Version: >= 1.8
+build-type: Simple
+
+library
+  Exposed-Modules: <Your Module>
+  HS-Source-Dirs:  <Your src>
+  Build-Depends:   base >= 2.0
+  extra-libraries: <C Libraries>
+  extensions:      <extensions: GeneralizedNewtypeDeriving>
+
+Executable <program name>
+  HS-Source-Dirs:  <Your src>
+  main-is:         <Your Main>
+  build-depends:   base
+  extra-libraries: <C Libraries>
+
+
