@@ -186,7 +186,10 @@ def get_file_data(fname):
             except Exception, e:
                 print e
                 pass
-        
+    else:
+        print '''
+Notice: no summon servers set, please set SUMMONSERVER variable.
+'''.strip()
     raise Exception(' >> Reason, could not find file: '+fname)
 
 def execute_command(command):
@@ -217,8 +220,8 @@ def main(argv):
             nexus_dir = os.path.join(os.getenv('HOME'),'.nexus')
             os.makedirs(nexus_dir)
             print '''
-Created directory "%(nexus_dir)s".  You should place any files you wish to
-summon in this directory.''' % locals()
+Created directory "%(nexus_dir)s".  You should place any files you wish
+to summon in this directory.'''.strip() % locals()
         except:
             print "Failed to create Nexus"
 
