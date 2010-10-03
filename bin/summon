@@ -24,6 +24,8 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 #  
 
+# Version 0.2.0
+
 help_text = '''
 Summon is a program used for retrieving commonly used template files and
 placing them in the current directory, ready for use in a project.
