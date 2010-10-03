@@ -50,6 +50,8 @@ Usage:
   Multiple summons with and without template application
   $ summon CMakesLists.txt where project=Example and example_file_1.txt
 
+
+
 Adding files locally
   When you first run summon, it will create a directory in your home directory 
   called (.nexus). Any files within this directory can be summoned.  If a file
@@ -64,10 +66,12 @@ from pprint import pprint
 import sys
 import os
 import urllib2
+from BeautifulSoup import BeautifulSoup
 
 class SummonLexer:
     reserved_words = '''
     HELP
+    LIST
     AS
     WHERE
     AND
@@ -124,6 +128,11 @@ class SummonParser:
     def p_root_1(self, p):
         '''root : HELP'''
         print help_text
+        p[0] = {}
+
+    def p_root_2(self, p):
+        '''root : LIST'''
+        show_listing()
         p[0] = {}
 
     def p_command_list_0(self,p):
@@ -189,12 +198,64 @@ def reduce_command(commands):
         ret.append({'get_name':target,'put_name':destination,'values':values})
     return ret
 
+# These were all added as a bit of a hack to allow listing of availible files
+# Turns outs, this was a dumb way to do it, I should have refactored the later
+# code used in retrieving the file, and re-used that here as well... - JLK
+# Todo: Fix this!
+
+def get_nexus_dirs():
+    try:
+        return [os.path.join(os.getenv('HOME'),'.nexus')]
+    except:
+        return []
+
+def get_nexus_servers():
+    try:
+        servername_list = os.getenv('SUMMONSERVER')
+        return servername_list.split(':')
+    except:
+        return []
+
+def get_local_nexus_file_list():
+    ret = []
+    for d in get_nexus_dirs():
+        vals = os.listdir(d)
+        vals = [x for x in vals if x[0] != '.']
+        ret.extend(vals)
+    return ret
+
+def show_listing():
+    local_items = get_local_nexus_file_list()
+    for x in local_items:
+        print "home  ", x
+
+    web_items = get_web_nexus_file_list()
+    web_items = [x for x in web_items if x not in local_items]
+    for x in web_items:
+        print "web   ", x
+# End bad code
+
 def flatten(l):
     ret = []
     for sl in l:
         for v in sl:
             ret.append(v)
     return ret
+
+def get_web_nexus_file_list():
+    for servername in get_nexus_servers():
+        url = 'http://%(servername)s/nexus/'%locals()
+        try:
+            result = urllib2.urlopen(url)
+            data = result.read()
+            links = BeautifulSoup(data).findAll('a')
+            items = [str(x.contents[0]).strip() for x in links]
+            items.remove('Parent Directory')
+            return items
+        except Exception, e:
+            print e
+            pass
+    return []
 
 def get_file_data(fname):
     # Search locally
@@ -218,17 +279,15 @@ def get_file_data(fname):
             return data
 
     # Search Online
-    servername_list = os.getenv('SUMMONSERVER')
-    if servername_list:
-        for servername in servername_list.split(':'):
-            url = 'http://%(servername)s/nexus/%(fname)s'%locals()
-            try:
-                result = urllib2.urlopen(url)
-                data = result.read()
-                return data
-            except Exception, e:
-                print e
-                pass
+    for servername in get_nexus_servers:
+        url = 'http://%(servername)s/nexus/%(fname)s'%locals()
+        try:
+            result = urllib2.urlopen(url)
+            data = result.read()
+            return data
+        except Exception, e:
+            print e
+            pass
         
     raise Exception(' >> Reason, could not find file: '+fname)
 
@@ -283,3 +342,8 @@ summon in this directory.''' % locals()
 
 if __name__ == '__main__':
     main(sys.argv)
+
+
+
+
+
