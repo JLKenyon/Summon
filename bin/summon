@@ -24,6 +24,40 @@
 # OTHER DEALINGS IN THE SOFTWARE.
 #  
 
+help_text = '''
+Summon is a program used for retrieving commonly used template files and
+placing them in the current directory, ready for use in a project.
+
+Usage:
+  Getting this help
+  $ summon help
+  
+  Simple retreival of a file
+  $ summon example_file.txt
+  
+  Simple retreival of several files
+  $ summon example_file_1.txt example_file_2.txt
+  
+  Summon a file under a new name
+  $ summon general_makefile as Makefile
+  
+  Summon several files under new names
+  $ summon a.txt b.txt c.txt as A.txt B.txt C.txt
+  
+  Summon and apply templates
+  $ summon CMakeLists.txt where project=Example author=John_Kenyon
+  
+  Multiple summons with and without template application
+  $ summon CMakesLists.txt where project=Example and example_file_1.txt
+
+Adding files locally
+  When you first run summon, it will create a directory in your home directory 
+  called (.nexus). Any files within this directory can be summoned.  If a file
+  is given an extension of .tmpl, then this file may be summoned with template
+  values using the "where" statement above.  Template values should be listed
+  in the file using the standard python format of %(name)s.
+'''
+
 import ply.lex as lex
 import ply.yacc as yacc
 from pprint import pprint
@@ -33,6 +67,7 @@ import urllib2
 
 class SummonLexer:
     reserved_words = '''
+    HELP
     AS
     WHERE
     AND
@@ -82,6 +117,15 @@ class SummonParser:
         print p
         print
 
+    def p_root_0(self, p):
+        '''root : command_list'''
+        p[0] = p[1]
+
+    def p_root_1(self, p):
+        '''root : HELP'''
+        print help_text
+        p[0] = {}
+
     def p_command_list_0(self,p):
         '''command_list : command'''
         p[0] = [p[1]]
@@ -116,7 +160,6 @@ Error, unbalanced AS statement. You should have as many requested files as you h
     def p_string_list_1(self,p):
         '''string_list : string_list STRING'''
         p[0] = p[1] + [p[2]]
-
 
 def reduce_command(commands):
     assert(commands.has_key('targets'))
